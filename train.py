@@ -1,6 +1,7 @@
 from __future__ import division
 
 from utils.utils import *
+from utils.seed import set_seed, setup_cudnn
 from utils.cocoapi_evaluator import COCOAPIEvaluator
 from utils.parse_yolo_weights import parse_yolo_weights
 from models.yolov3 import *
@@ -70,6 +71,10 @@ def main():
 
     print('effective_batch_size = batch_size * iter_size = %d * %d' %
           (batch_size, subdivision))
+
+    # Make trainer behavior deterministic
+    set_seed(seed=0)
+    setup_cudnn(deterministic=True)
 
     # Learning rate setup
     def burnin_schedule(i):

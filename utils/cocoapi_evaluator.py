@@ -125,4 +125,3 @@ class COCOAPIEvaluator():
             ap['aP5095_L'] = cocoEval.stats[5]
 
         return ap
-
