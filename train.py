@@ -37,7 +37,7 @@ def parse_args():
     parser.add_argument('--debug', action='store_true', default=False,
                         help='debug mode where only one image is trained')
     parser.add_argument(
-        '--tfboard', help='tensorboard path for logging', type=str, default=None)
+        '--tfboard_dir', help='tensorboard path for logging', type=str, default=None)
     return parser.parse_args()
 
 
@@ -101,10 +101,10 @@ def main():
         print("using cuda") 
         model = model.cuda()
 
-    if args.tfboard:
+    if args.tfboard_dir:
         print("using tfboard")
         from tensorboardX import SummaryWriter
-        tblogger = SummaryWriter(args.tfboard)
+        tblogger = SummaryWriter(args.tfboard_dir)
 
     model.train()
 
@@ -153,11 +153,16 @@ def main():
 
         # COCO evaluation
         if iter_i % args.eval_interval == 0 and iter_i > 0:
-            ap50_95, ap50 = evaluator.evaluate(model)
+            ap = evaluator.evaluate(model)
             model.train()
-            if args.tfboard:
-                tblogger.add_scalar('val/COCOAP50', ap50, iter_i)
-                tblogger.add_scalar('val/COCOAP50_95', ap50_95, iter_i)
+            if args.tfboard_dir:
+                # val/aP
+                tblogger.add_scalar('val/aP50', ap['aP50'], iter_i)
+                tblogger.add_scalar('val/aP75', ap['aP75'], iter_i)
+                tblogger.add_scalar('val/aP5095', ap['aP5095'], iter_i)
+                tblogger.add_scalar('val/aP5095_S', ap['aP5095_S'], iter_i)
+                tblogger.add_scalar('val/aP5095_M', ap['aP5095_M'], iter_i)
+                tblogger.add_scalar('val/aP5095_L', ap['aP5095_L'], iter_i)
 
         # subdivision loop
         optimizer.zero_grad()
@@ -186,8 +191,15 @@ def main():
                      model.loss_dict['l2'], imgsize),
                   flush=True)
 
-            if args.tfboard:
-                tblogger.add_scalar('train/total_loss', model.loss_dict['l2'], iter_i)
+            if args.tfboard_dir:
+                # lr
+                tblogger.add_scalar('lr', current_lr, iter_i)
+                # train/loss
+                tblogger.add_scalar('train/loss_xy', model.loss_dict['xy'], iter_i)
+                tblogger.add_scalar('train/loss_wh', model.loss_dict['wh'], iter_i)
+                tblogger.add_scalar('train/loss_conf', model.loss_dict['conf'], iter_i)
+                tblogger.add_scalar('train/loss_cls', model.loss_dict['cls'], iter_i)
+                tblogger.add_scalar('train/loss_total', model.loss_dict['l2'], iter_i)
 
             # random resizing
             if random_resize:
@@ -199,13 +211,14 @@ def main():
                 dataiterator = iter(dataloader)
 
         # save checkpoint
-        if iter_i > 0 and (iter_i % args.checkpoint_interval == 0):
+        if args.checkpoint_dir and iter_i > 0 and (iter_i % args.checkpoint_interval == 0):
             torch.save({'iter': iter_i,
                         'model_state_dict': model.state_dict(),
                         'optimizer_state_dict': optimizer.state_dict(),
                         },
                         os.path.join(args.checkpoint_dir, "snapshot"+str(iter_i)+".ckpt"))
-    if args.tfboard:
+
+    if args.tfboard_dir:
         tblogger.close()
 
 
