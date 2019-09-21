@@ -106,4 +106,3 @@ class COCOAPIEvaluator():
             return cocoEval.stats[0], cocoEval.stats[1]
         else:
             return 0, 0
-
