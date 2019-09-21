@@ -153,6 +153,7 @@ def main():
 
         # COCO evaluation
         if iter_i % args.eval_interval == 0 and iter_i > 0:
+            print('evaluating...')
             ap = evaluator.evaluate(model)
             model.train()
             if args.tfboard_dir:
