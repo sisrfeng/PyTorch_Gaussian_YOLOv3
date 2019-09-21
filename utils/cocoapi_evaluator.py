@@ -45,13 +45,15 @@ class COCOAPIEvaluator():
 
     def evaluate(self, model):
         """
-        COCO average precision (AP) Evaluation. Iterate inference on the test dataset
+        COCO average precision (aP) Evaluation. Iterate inference on the test dataset
         and the results are evaluated by COCO API.
         Args:
             model : model object
         Returns:
-            ap50_95 (float) : calculated COCO AP for IoU=50:95
-            ap50 (float) : calculated COCO AP for IoU=50
+            ap (dict) : 
+                dict containing COCO average precisions with various IoU threshold \
+                and object sizes. If no object is detected, False is assigned for \
+                'valid' field and all aP fields are set to 0.
         """
         model.eval()
         cuda = torch.cuda.is_available()
@@ -91,6 +93,16 @@ class COCOAPIEvaluator():
 
         annType = ['segm', 'bbox', 'keypoints']
 
+        ap = {
+            'valid': False,
+            'aP5095': 0.0,
+            'aP50': 0.0,
+            'aP75': 0.0,
+            'aP5095_S': 0.0,
+            'aP5095_M': 0.0,
+            'aP5095_L': 0.0
+        }
+
         # Evaluate the Dt (detection) json comparing with the ground truth
         if len(data_dict) > 0:
             cocoGt = self.dataset.coco
@@ -103,6 +115,13 @@ class COCOAPIEvaluator():
             cocoEval.evaluate()
             cocoEval.accumulate()
             cocoEval.summarize()
-            return cocoEval.stats[0], cocoEval.stats[1]
-        else:
-            return 0, 0
+
+            ap['valid'] = True
+            ap['aP5095'] = cocoEval.stats[0]
+            ap['aP50'] = cocoEval.stats[1]
+            ap['aP75'] = cocoEval.stats[2]
+            ap['aP5095_S'] = cocoEval.stats[3]
+            ap['aP5095_M'] = cocoEval.stats[4]
+            ap['aP5095_L'] = cocoEval.stats[5]
+
+        return ap
