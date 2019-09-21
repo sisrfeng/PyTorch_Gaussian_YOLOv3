@@ -18,7 +18,7 @@ def setup_cudnn(deterministic=True, benchmark=False):
     """configure cuDNN
     Args:
         deterministic (bool) : make cuDNN behavior deterministic if True
-        benchmark (bool) : use cuDNN benchmark function
+        benchmark (bool) : use cuDNN benchmark function if True
     """
     torch.backends.cudnn.benchmark = benchmark
     torch.backends.cudnn.deterministic = deterministic
