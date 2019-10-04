@@ -39,7 +39,7 @@ class YOLOLayer(nn.Module):
         self.ref_anchors[:, 2:] = np.array(self.all_anchors_grid)
         self.ref_anchors = torch.FloatTensor(self.ref_anchors)
         self.conv = nn.Conv2d(in_channels=in_ch,
-                              out_channels=self.n_anchors * (self.n_classes + 5),
+                              out_channels=self.n_anchors * (self.n_classes + 5 + 4),  # 4: uncertainty for xywh
                               kernel_size=1, stride=1, padding=0)
 
     def forward(self, xin, labels=None):
@@ -64,17 +64,22 @@ class YOLOLayer(nn.Module):
             loss_cls (torch.Tensor): classification loss - calculated by BCE for each class.
             loss_l2 (torch.Tensor): total l2 loss - only for logging.
         """
-        output = self.conv(xin)
+        h = self.conv(xin)
 
-        batchsize = output.shape[0]
-        fsize = output.shape[2]
+        batchsize = h.shape[0]
+        fsize = h.shape[2]
         n_ch = 5 + self.n_classes
         dtype = torch.cuda.FloatTensor if xin.is_cuda else torch.FloatTensor
 
-        output = output.view(batchsize, self.n_anchors, n_ch, fsize, fsize)
-        output = output.permute(0, 1, 3, 4, 2)  # .contiguous()
+        h = h.view(batchsize, self.n_anchors, n_ch + 4, fsize, fsize)  # 4: uncertainty for xywh = (sx, sy, sw, sh)
+        h = h.permute(0, 1, 3, 4, 2)  # batch, anchor, grid_y, grid_x, (x, y, w, h, obj, cls[], sx, sy, sw, sh)
+
+        # logistic activation for sigma of xywh
+        sigma_xywh = h[..., -4:]  # batch, anchor, grid_y, grid_x, (sx, sy, sw, sh)
+        sigma_xywh = torch.sigmoid(sigma_xywh)
 
         # logistic activation for xy, obj, cls
+        output = h[..., :-4]
         output[..., np.r_[:2, 4:n_ch]] = torch.sigmoid(
             output[..., np.r_[:2, 4:n_ch]])
 
@@ -100,9 +105,9 @@ class YOLOLayer(nn.Module):
 
         if labels is None:  # not training
             pred[..., :4] *= self.stride
-            return pred.view(batchsize, -1, n_ch).data
+            return pred.view(batchsize, -1, n_ch).data  # TODO: postprocess considering sigma for xywh
 
-        pred = pred[..., :4].data
+        pred = pred[..., :4].data  # batch, anchor, grid_y, grid_x, (x, y, w, h)
 
         # target assignment
 
@@ -178,6 +183,7 @@ class YOLOLayer(nn.Module):
                         2 - truth_w_all[b, ti] * truth_h_all[b, ti] / fsize / fsize)
 
         # loss calculation
+        # TODO: loss calculation considering sigma for xywh
 
         output[..., 4] *= obj_mask
         output[..., np.r_[0:4, 5:n_ch]] *= tgt_mask
