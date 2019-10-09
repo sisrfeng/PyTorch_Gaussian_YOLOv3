@@ -183,24 +183,35 @@ class YOLOLayer(nn.Module):
                         2 - truth_w_all[b, ti] * truth_h_all[b, ti] / fsize / fsize)
 
         # loss calculation
-        # TODO: loss calculation considering sigma for xywh
-
         output[..., 4] *= obj_mask
         output[..., np.r_[0:4, 5:n_ch]] *= tgt_mask
-        output[..., 2:4] *= tgt_scale
+        ##output[..., 2:4] *= tgt_scale
 
         target[..., 4] *= obj_mask
         target[..., np.r_[0:4, 5:n_ch]] *= tgt_mask
-        target[..., 2:4] *= tgt_scale
+        ##target[..., 2:4] *= tgt_scale
 
-        bceloss = nn.BCELoss(weight=tgt_scale*tgt_scale,
-                             size_average=False)  # weighted BCEloss
-        loss_xy = bceloss(output[..., :2], target[..., :2])
-        loss_wh = self.l2_loss(output[..., 2:4], target[..., 2:4]) / 2
+        ##bceloss = nn.BCELoss(weight=tgt_scale*tgt_scale,
+        ##                     size_average=False)  # weighted BCEloss
+        ##loss_xy = bceloss(output[..., :2], target[..., :2])
+        ##loss_wh = self.l2_loss(output[..., 2:4], target[..., 2:4]) / 2
         loss_obj = self.bce_loss(output[..., 4], target[..., 4])
         loss_cls = self.bce_loss(output[..., 5:], target[..., 5:])
+
+        # XXX
+        loss_xy = - torch.log(self._prob(output[..., :2], target[..., :2], sigma_xywh[..., :2]) + 1.0e-9)
+        loss_xy *= (tgt_scale ** 2.0) / 2.0
+        loss_wh = - torch.log(self._prob(output[..., 2:4], target[..., 2:4], sigma_xywh[..., 2:4]) + 1.0e-9)
+        loss_wh *= (tgt_scale ** 2.0) / 2.0
+
+        # XXX
+        output[..., 2:4] *= tgt_scale
+        target[..., 2:4] *= tgt_scale
         loss_l2 = self.l2_loss(output, target)
 
         loss = loss_xy + loss_wh + loss_obj + loss_cls
 
         return loss, loss_xy, loss_wh, loss_obj, loss_cls, loss_l2
+
+    def _prob(self, val, mean, var):
+        return torch.exp(- (val - mean) ** 2.0 / var / 2.0) / torch.sqrt(2.0 * np.pi * var)
