@@ -105,7 +105,9 @@ class YOLOLayer(nn.Module):
 
         if labels is None:  # not training
             pred[..., :4] *= self.stride
-            return pred.view(batchsize, -1, n_ch).data  # TODO: postprocess considering sigma for xywh
+            sigma = sigma_xywh.mean(dim=-1)  # shape: (batch, anchor, grid_y, grid_x)
+            pred[..., 4] *= (1.0 - sigma)
+            return pred.view(batchsize, -1, n_ch).data
 
         pred = pred[..., :4].data  # batch, anchor, grid_y, grid_x, (x, y, w, h)
 
