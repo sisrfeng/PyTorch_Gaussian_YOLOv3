@@ -206,10 +206,11 @@ class YOLOLayer(nn.Module):
         loss_wh *= (tgt_scale ** 2.0) / 2.0
         loss_wh = loss_wh.sum()
 
-        # XXX
-        output[..., 2:4] *= tgt_scale
-        target[..., 2:4] *= tgt_scale
-        loss_l2 = self.l2_loss(output, target)
+        # XXX loss_l2 is not used for backprop. only for monitoring.
+        #output[..., 2:4] *= tgt_scale
+        #target[..., 2:4] *= tgt_scale
+        #loss_l2 = self.l2_loss(output, target)
+        loss_l2 = -1.0
 
         loss = loss_xy + loss_wh + loss_obj + loss_cls
 
