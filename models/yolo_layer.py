@@ -210,7 +210,7 @@ class YOLOLayer(nn.Module):
         #output[..., 2:4] *= tgt_scale
         #target[..., 2:4] *= tgt_scale
         #loss_l2 = self.l2_loss(output, target)
-        loss_l2 = -1.0
+        loss_l2 = 0.0
 
         loss = loss_xy + loss_wh + loss_obj + loss_cls
 
