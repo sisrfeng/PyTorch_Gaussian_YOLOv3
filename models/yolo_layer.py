@@ -201,8 +201,10 @@ class YOLOLayer(nn.Module):
         # XXX
         loss_xy = - torch.log(self._prob(output[..., :2], target[..., :2], sigma_xywh[..., :2]) + 1.0e-9)
         loss_xy *= (tgt_scale ** 2.0) / 2.0
+        loss_xy = loss_xy.sum()
         loss_wh = - torch.log(self._prob(output[..., 2:4], target[..., 2:4], sigma_xywh[..., 2:4]) + 1.0e-9)
         loss_wh *= (tgt_scale ** 2.0) / 2.0
+        loss_wh = loss_wh.sum()
 
         # XXX
         output[..., 2:4] *= tgt_scale
