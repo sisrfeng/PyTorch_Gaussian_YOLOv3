@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import numpy as np
 from utils.utils import bboxes_iou
 
@@ -8,7 +9,8 @@ class YOLOLayer(nn.Module):
     """
     detection layer corresponding to yolo_layer.c of darknet
     """
-    def __init__(self, config_model, layer_no, in_ch, ignore_thre=0.7):
+    def __init__(
+        self, config_model, layer_no, in_ch, ignore_thre=0.7):
         """
         Args:
             config_model (dict) : model configuration.
@@ -16,6 +18,8 @@ class YOLOLayer(nn.Module):
                 ANCH_MASK:  (list of int list): index indicating the anchors to be
                     used in YOLO layers. One of the mask group is picked from the list.
                 N_CLASSES (int): number of classes
+                GAUSSIAN (bool): predict uncertainty for each of xywh coordinates in Gaussian YOLOv3 way.
+                    For Gaussian YOLOv3, see https://arxiv.org/abs/1904.04620
             layer_no (int): YOLO layer number - one from (0, 1, 2).
             in_ch (int): number of input channels.
             ignore_thre (float): threshold of IoU above which objectness training is ignored.
@@ -27,19 +31,23 @@ class YOLOLayer(nn.Module):
         self.anch_mask = config_model['ANCH_MASK'][layer_no]
         self.n_anchors = len(self.anch_mask)
         self.n_classes = config_model['N_CLASSES']
+        self.gaussian = config_model['GAUSSIAN']
         self.ignore_thre = ignore_thre
-        self.l2_loss = nn.MSELoss(size_average=False)
-        self.bce_loss = nn.BCELoss(size_average=False)
         self.stride = strides[layer_no]
-        self.all_anchors_grid = [(w / self.stride, h / self.stride)
+        all_anchors_grid = [(w / self.stride, h / self.stride)
                                  for w, h in self.anchors]
-        self.masked_anchors = [self.all_anchors_grid[i]
+        self.masked_anchors = [all_anchors_grid[i]
                                for i in self.anch_mask]
-        self.ref_anchors = np.zeros((len(self.all_anchors_grid), 4))
-        self.ref_anchors[:, 2:] = np.array(self.all_anchors_grid)
+        self.ref_anchors = np.zeros((len(all_anchors_grid), 4))
+        self.ref_anchors[:, 2:] = np.array(all_anchors_grid)
         self.ref_anchors = torch.FloatTensor(self.ref_anchors)
+
+        channels_per_anchor = 5 + self.n_classes  # 5: x, y, w, h, objectness
+        if self.gaussian:
+            print('Gaussian YOLOv3')
+            channels_per_anchor += 4  # 4: xywh uncertainties
         self.conv = nn.Conv2d(in_channels=in_ch,
-                              out_channels=self.n_anchors * (self.n_classes + 5 + 4),  # 4: uncertainty for xywh
+                              out_channels=channels_per_anchor,
                               kernel_size=1, stride=1, padding=0)
 
     def forward(self, xin, labels=None):
@@ -64,22 +72,25 @@ class YOLOLayer(nn.Module):
             loss_cls (torch.Tensor): classification loss - calculated by BCE for each class.
             loss_l2 (torch.Tensor): total l2 loss - only for logging.
         """
-        h = self.conv(xin)
+        output = self.conv(xin)
 
-        batchsize = h.shape[0]
-        fsize = h.shape[2]
-        n_ch = 5 + self.n_classes
+        batchsize = output.shape[0]
+        fsize = output.shape[2]
+        n_ch = 5 + self.n_classes  # channels per anchor w/o xywh unceartainties
         dtype = torch.cuda.FloatTensor if xin.is_cuda else torch.FloatTensor
 
-        h = h.view(batchsize, self.n_anchors, n_ch + 4, fsize, fsize)  # 4: uncertainty for xywh = (sx, sy, sw, sh)
-        h = h.permute(0, 1, 3, 4, 2)  # batch, anchor, grid_y, grid_x, (x, y, w, h, obj, cls[], sx, sy, sw, sh)
+        output = output.view(batchsize, self.n_anchors, -1, fsize, fsize)
+        output = output.permute(0, 1, 3, 4, 2)  # shape: [batch, anchor, grid_y, grid_x, channels_per_anchor]
 
-        # logistic activation for sigma of xywh
-        sigma_xywh = h[..., -4:]  # batch, anchor, grid_y, grid_x, (sx, sy, sw, sh)
-        sigma_xywh = torch.sigmoid(sigma_xywh)
+        if self.gaussian:
+            # logistic activation for sigma of xywh
+            sigma_xywh = output[..., -4:]  # shape: [batch, anchor, grid_y, grid_x, 4(= xywh uncertainties)]
+            sigma_xywh = torch.sigmoid(sigma_xywh)
+
+            output = output[..., :-4]
+        # output shape: [batch, anchor, grid_y, grid_x, n_class + 5(= x, y, w, h, objectness)]
 
         # logistic activation for xy, obj, cls
-        output = h[..., :-4]
         output[..., np.r_[:2, 4:n_ch]] = torch.sigmoid(
             output[..., np.r_[:2, 4:n_ch]])
 
@@ -105,11 +116,12 @@ class YOLOLayer(nn.Module):
 
         if labels is None:  # not training
             pred[..., :4] *= self.stride
-            sigma = sigma_xywh.mean(dim=-1)  # shape: (batch, anchor, grid_y, grid_x)
-            pred[..., 4] *= (1.0 - sigma)
+            if self.gaussian:
+                sigma = sigma_xywh.mean(dim=-1)  # shape: [batch, anchor, grid_y, grid_x]
+                pred[..., 4] *= (1.0 - sigma)
             return pred.view(batchsize, -1, n_ch).data
 
-        pred = pred[..., :4].data  # batch, anchor, grid_y, grid_x, (x, y, w, h)
+        pred = pred[..., :4].data  # shape: [batch, anchor, grid_y, grid_x, 4(= x, y, w, h)]
 
         # target assignment
 
@@ -181,42 +193,32 @@ class YOLOLayer(nn.Module):
                     target[b, a, j, i, 4] = 1
                     target[b, a, j, i, 5 + labels[b, ti,
                                                   0].to(torch.int16).numpy()] = 1
-                    tgt_scale[b, a, j, i, :] = torch.sqrt(
-                        2 - truth_w_all[b, ti] * truth_h_all[b, ti] / fsize / fsize)
+                    tgt_scale[b, a, j, i, :] = 2 - truth_w_all[b, ti] * truth_h_all[b, ti] / fsize / fsize
 
         # loss calculation
         output[..., 4] *= obj_mask
         output[..., np.r_[0:4, 5:n_ch]] *= tgt_mask
-        ##output[..., 2:4] *= tgt_scale
 
         target[..., 4] *= obj_mask
         target[..., np.r_[0:4, 5:n_ch]] *= tgt_mask
-        ##target[..., 2:4] *= tgt_scale
 
-        ##bceloss = nn.BCELoss(weight=tgt_scale*tgt_scale,
-        ##                     size_average=False)  # weighted BCEloss
-        ##loss_xy = bceloss(output[..., :2], target[..., :2])
-        ##loss_wh = self.l2_loss(output[..., 2:4], target[..., 2:4]) / 2
-        loss_obj = self.bce_loss(output[..., 4], target[..., 4])
-        loss_cls = self.bce_loss(output[..., 5:], target[..., 5:])
+        loss_obj = F.binary_cross_entropy(output[..., 4], target[..., 4], reduction='sum')
+        loss_cls = F.binary_cross_entropy(output[..., 5:], target[..., 5:], reduction='sum')
 
-        # XXX
-        loss_xy = - torch.log(self._prob(output[..., :2], target[..., :2], sigma_xywh[..., :2]) + 1.0e-9)
-        loss_xy *= (tgt_scale ** 2.0) / 2.0
-        loss_xy = loss_xy.sum()
-        loss_wh = - torch.log(self._prob(output[..., 2:4], target[..., 2:4], sigma_xywh[..., 2:4]) + 1.0e-9)
-        loss_wh *= (tgt_scale ** 2.0) / 2.0
-        loss_wh = loss_wh.sum()
-
-        # XXX loss_l2 is not used for backprop. only for monitoring.
-        #output[..., 2:4] *= tgt_scale
-        #target[..., 2:4] *= tgt_scale
-        #loss_l2 = self.l2_loss(output, target)
-        loss_l2 = 0.0
+        if self.gaussian:
+            loss_xy = - torch.log(
+                self._gaussian_dist_pdf(output[..., :2], target[..., :2], sigma_xywh[..., :2]) + 1e-9) / 2.0
+            loss_wh = - torch.log(
+                self._gaussian_dist_pdf(output[..., 2:4], target[..., 2:4], sigma_xywh[..., 2:4]) + 1e-9) / 2.0
+        else:
+            loss_xy = F.binary_cross_entropy(output[..., :2], target[..., :2], reduction='none')
+            loss_wh = F.mse_loss(output[..., 2:4], target[..., 2:4], reduction='none') / 2.0
+        loss_xy = (loss_xy * tgt_scale).sum()
+        loss_wh = (loss_wh * tgt_scale).sum()
 
         loss = loss_xy + loss_wh + loss_obj + loss_cls
 
-        return loss, loss_xy, loss_wh, loss_obj, loss_cls, loss_l2
+        return loss, loss_xy, loss_wh, loss_obj, loss_cls
 
-    def _prob(self, val, mean, var):
+    def _gaussian_dist_pdf(self, val, mean, var):
         return torch.exp(- (val - mean) ** 2.0 / var / 2.0) / torch.sqrt(2.0 * np.pi * var)

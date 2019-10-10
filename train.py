@@ -194,7 +194,7 @@ def main():
                   % (iter_i, iter_size, current_lr,
                      model.loss_dict['xy'], model.loss_dict['wh'],
                      model.loss_dict['conf'], model.loss_dict['cls'], 
-                     model.loss_dict['l2'], imgsize),
+                     loss, imgsize),
                   flush=True)
 
             if args.tfboard_dir:
@@ -205,7 +205,7 @@ def main():
                 tblogger.add_scalar('train/loss_wh', model.loss_dict['wh'], iter_i)
                 tblogger.add_scalar('train/loss_conf', model.loss_dict['conf'], iter_i)
                 tblogger.add_scalar('train/loss_cls', model.loss_dict['cls'], iter_i)
-                tblogger.add_scalar('train/loss_total', model.loss_dict['l2'], iter_i)
+                tblogger.add_scalar('train/loss', loss, iter_i)
 
             # random resizing
             if random_resize:
