@@ -47,7 +47,7 @@ class YOLOLayer(nn.Module):
             print('Gaussian YOLOv3')
             channels_per_anchor += 4  # 4: xywh uncertainties
         self.conv = nn.Conv2d(in_channels=in_ch,
-                              out_channels=channels_per_anchor,
+                              out_channels=channels_per_anchor * self.n_anchors,
                               kernel_size=1, stride=1, padding=0)
 
     def forward(self, xin, labels=None):
