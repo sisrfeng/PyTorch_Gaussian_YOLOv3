@@ -68,6 +68,7 @@ def main():
     ignore_thre = cfg['TRAIN']['IGNORETHRE']
     random_resize = cfg['AUGMENTATION']['RANDRESIZE']
     base_lr = cfg['TRAIN']['LR'] / batch_size / subdivision
+    gradient_clip = cfg['TRAIN']['GRADIENT_CLIP']
 
     print('effective_batch_size = batch_size * iter_size = %d * %d' %
           (batch_size, subdivision))
@@ -182,6 +183,9 @@ def main():
             targets = Variable(targets.type(dtype), requires_grad=False)
             loss = model(imgs, targets)
             loss.backward()
+
+        if gradient_clip >= 0:
+            torch.nn.utils.clip_grad_norm(model.parameters(), gradient_clip)
 
         optimizer.step()
         scheduler.step()
