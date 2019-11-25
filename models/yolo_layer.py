@@ -130,7 +130,7 @@ class YOLOLayer(nn.Module):
                 sigma_xywh[..., 2:] = torch.exp(sigma_xywh[..., 2:])
 
                 # concat pred with uncertainties
-                pred = torch.cat([pred, sigma_xywh], 2)  # shsape: [batch, anchor x grid_x x grid_x, n_class + ]
+                pred = torch.cat([pred, sigma_xywh], 2)  # shsape: [batch, anchor x grid_x x grid_x, n_class + 9]
 
             return pred.data
 
