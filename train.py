@@ -68,6 +68,7 @@ def main():
     ignore_thre = cfg['TRAIN']['IGNORETHRE']
     random_resize = cfg['AUGMENTATION']['RANDRESIZE']
     base_lr = cfg['TRAIN']['LR'] / batch_size / subdivision
+    gradient_clip = cfg['TRAIN']['GRADIENT_CLIP']
 
     print('effective_batch_size = batch_size * iter_size = %d * %d' %
           (batch_size, subdivision))
@@ -183,6 +184,9 @@ def main():
             loss = model(imgs, targets)
             loss.backward()
 
+        if gradient_clip >= 0:
+            torch.nn.utils.clip_grad_norm(model.parameters(), gradient_clip)
+
         optimizer.step()
         scheduler.step()
 
@@ -194,7 +198,7 @@ def main():
                   % (iter_i, iter_size, current_lr,
                      model.loss_dict['xy'], model.loss_dict['wh'],
                      model.loss_dict['conf'], model.loss_dict['cls'], 
-                     model.loss_dict['l2'], imgsize),
+                     loss, imgsize),
                   flush=True)
 
             if args.tfboard_dir:
@@ -205,7 +209,7 @@ def main():
                 tblogger.add_scalar('train/loss_wh', model.loss_dict['wh'], iter_i)
                 tblogger.add_scalar('train/loss_conf', model.loss_dict['conf'], iter_i)
                 tblogger.add_scalar('train/loss_cls', model.loss_dict['cls'], iter_i)
-                tblogger.add_scalar('train/loss_total', model.loss_dict['l2'], iter_i)
+                tblogger.add_scalar('train/loss', loss, iter_i)
 
             # random resizing
             if random_resize:
