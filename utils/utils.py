@@ -2,6 +2,7 @@ from __future__ import division
 import torch
 import numpy as np
 import cv2
+import seaborn as sns
 
 
 def nms(bbox, thresh, score=None, limit=None):
@@ -371,6 +372,11 @@ def get_coco_label_names():
                       46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 67,
                       70, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 84, 85, 86, 87, 88, 89, 90]
 
-    coco_cls_colors = np.random.randint(128, 255, size=(80, 3))
+    coco_cls_colors = np.empty(shape=(0, 3), dtype=np.int)
+    palette = sns.color_palette(n_colors=len(coco_class_ids))
+    for color in palette:
+        r, g, b = color[0] * 255, color[1] * 255, color[2] * 255
+        rgb = np.array([int(r), int(g), int(b)])
+        coco_cls_colors = np.append(coco_cls_colors, rgb[None, :], axis=0)
 
     return coco_label_names, coco_class_ids, coco_cls_colors
