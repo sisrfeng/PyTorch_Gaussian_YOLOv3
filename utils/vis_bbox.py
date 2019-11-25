@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 def vis_bbox(img, bbox, label=None, score=None, label_names=None,
-             instance_colors=None, alpha=1., linewidth=3., ax=None):
+             instance_colors=None, sigma=[], alpha=1., linewidth=1., ax=None):
     """Visualize bounding boxes inside the image.
     Args:
         img (~numpy.ndarray): An array of shape :math:`(3, height, width)`.
@@ -26,6 +26,8 @@ def vis_bbox(img, bbox, label=None, score=None, label_names=None,
             to visualize the :obj:`i`-th instance.
             If :obj:`instance_colors` is :obj:`None`, the red is used for
             all boxes.
+        sigma (iterable of tuples): List of uncertainties with shape :math:`(R, 4)`.
+             Each value indicates uncertainties of the xywh coordinates.
         alpha (float): The value which determines transparency of the
             bounding boxes. The range of this value is :math:`[0, 1]`.
         linewidth (float): The thickness of the edges of the bounding boxes.
@@ -34,7 +36,6 @@ def vis_bbox(img, bbox, label=None, score=None, label_names=None,
     Returns:
         ~matploblib.axes.Axes:
         Returns the Axes object with the plot for further tweaking.
-
     from: https://github.com/chainer/chainercv
     """
              
@@ -46,8 +47,13 @@ def vis_bbox(img, bbox, label=None, score=None, label_names=None,
     # Returns newly instantiated matplotlib.axes.Axes object if ax is None
     if ax is None:
         fig = plt.figure()
-        ax = fig.add_subplot(1, 1, 1)
+        _, h, w = img.shape
+        w_ = w / 60.0
+        h_ = w_ * (h / w)
+        fig.set_size_inches((w_, h_))
+        ax = plt.axes([0, 0, 1, 1])
     ax.imshow(img.transpose((1, 2, 0)).astype(np.uint8))
+    ax.axis('off')
     # If there is no bounding box to display, visualize the image and exit.
     if len(bbox) == 0:
         return ax
@@ -59,13 +65,39 @@ def vis_bbox(img, bbox, label=None, score=None, label_names=None,
     instance_colors = np.array(instance_colors)
 
     for i, bb in enumerate(bbox):
-        xy = (bb[1], bb[0])
+        x, y = bb[1], bb[0]
         height = bb[2] - bb[0]
         width = bb[3] - bb[1]
         color = instance_colors[i % len(instance_colors)] / 255
         ax.add_patch(plt.Rectangle(
-            xy, width, height, fill=False,
+            (x, y), width, height, fill=False,
             edgecolor=color, linewidth=linewidth, alpha=alpha))
+        
+        if sigma:
+            sx, sy, sw, sh = sigma[i]
+            
+            # wh uncertainties
+            scale_wh = 3.0
+            dw = width * sw - width
+            dh = height * sh - height
+            dw *= scale_wh
+            dh *= scale_wh
+            ax.add_patch(plt.Rectangle(
+                (x - 0.5 * dw, y - 0.5 * dh), width + dw, height + dh, fill=False,
+                edgecolor=color, linewidth=linewidth, alpha=alpha, linestyle='--'))
+            
+            # xy uncertainties
+            scale_xy = 10.0
+            sx *= scale_xy
+            sy *= scale_xy
+            cx, cy = x + width * 0.5, y + height * 0.5
+            ax.annotate('',  xy=(cx - sx, cy), xytext=(cx + sx, cy),
+                arrowprops=dict(arrowstyle='|-|, widthA=0.25, widthB=0.25',
+                facecolor=color, edgecolor=color, alpha=alpha))
+            
+            ax.annotate('',  xy=(cx, cy - sy), xytext=(cx, cy + sy),
+                arrowprops=dict(arrowstyle='|-|, widthA=0.25, widthB=0.25',
+                facecolor=color, edgecolor=color, alpha=alpha))
 
         caption = []
 
@@ -79,8 +111,10 @@ def vis_bbox(img, bbox, label=None, score=None, label_names=None,
             caption.append('{:.2f}'.format(sc))
 
         if len(caption) > 0:
-            ax.text(bb[1], bb[0],
+            ax.text(x, y,
                     ': '.join(caption),
+                    fontsize=12,
+                    color='black',
                     style='italic',
-                    bbox={'facecolor': 'white', 'alpha': 0.7, 'pad': 10})
+                    bbox={'facecolor': color, 'edgecolor': color, 'alpha': 1, 'pad': 0})
     return ax

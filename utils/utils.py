@@ -59,11 +59,11 @@ def postprocess(prediction, num_classes, conf_thre=0.7, nms_thre=0.45):
     perform box transformation, specify the class for each detection,
     and perform class-wise non-maximum suppression.
     Args:
-        prediction (torch tensor): The shape is :math:`(N, B, 4)`.
+        prediction (torch tensor): The shape is :math:`(N, B, X)`.
             :math:`N` is the number of predictions,
             :math:`B` the number of boxes. The last axis consists of
-            :math:`xc, yc, w, h` where `xc` and `yc` represent a center
-            of a bounding box.
+            :math:`xc, yc, w, h, conf, class_scores` 
+            where `xc` and `yc` represent a center of a bounding box.
         num_classes (int):
             number of dataset classes.
         conf_thre (float):
@@ -76,6 +76,10 @@ def postprocess(prediction, num_classes, conf_thre=0.7, nms_thre=0.45):
         output (list of torch tensor):
 
     """
+    # in gaussian YOLOv3 case, uncertainties of x, y, w, and h are
+    # concatenated to the last axis of prediction
+    gaussian = prediction.shape[-1] > num_classes + 5
+
     box_corner = prediction.new(prediction.shape)
     box_corner[:, :, 0] = prediction[:, :, 0] - prediction[:, :, 2] / 2
     box_corner[:, :, 1] = prediction[:, :, 1] - prediction[:, :, 3] / 2
@@ -97,17 +101,25 @@ def postprocess(prediction, num_classes, conf_thre=0.7, nms_thre=0.45):
         # Get score and class with highest confidence
         class_conf, class_pred = torch.max(
             image_pred[:, 5:5 + num_classes], 1,  keepdim=True)
-
+        
         # Detections ordered as (x1, y1, x2, y2, obj_conf, class_conf, class_pred)
         detections = torch.cat(
             (image_pred[:, :5], class_conf.float(), class_pred.float()), 1)
+
+        if gaussian:
+            # Get uncertainties
+            sigma = image_pred[:, -4:]
+            # Detections ordered as # (x1, y1, x2, y2, obj_conf, class_conf, class_pred, 
+            # sigma_x, sigma_y, sigma_w, sigma_h)
+            detections = torch.cat((detections, sigma), 1)
+
         # Iterate through all predicted classes
-        unique_labels = detections[:, -1].cpu().unique()
+        unique_labels = detections[:, 6].cpu().unique()
         if prediction.is_cuda:
             unique_labels = unique_labels.cuda()
         for c in unique_labels:
             # Get the detections with the particular class
-            detections_class = detections[detections[:, -1] == c]
+            detections_class = detections[detections[:, 6] == c]
             nms_in = detections_class.cpu().numpy()
             nms_out_index = nms(
                 nms_in[:, :4], nms_thre, score=nms_in[:, 4]*nms_in[:, 5])
