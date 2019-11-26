@@ -76,9 +76,13 @@ see [demo.ipynb](./demo.ipynb).
 Make sure you specify the path to the pretrained weight correctly in the notebook.
 
 In this notebook, predicted uncertainties of box size are represented by dashed lines around the boxes, 
-and uncertainties of box center coordinates are visualized by crossed lines inside the boxes.
+and uncertainties of box center coordinates are visualized by crossed lines inside the boxes:
 
-## Train
+<p align="left">
+  <img src="data/gaussian_yolov3/traffic_1_result.png" height="480"\>
+</p>
+
+## Training
 
 #### Donwload COCO 2017 dataset
 COCO dataset is downloaded and unzipped by:   
