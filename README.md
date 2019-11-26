@@ -16,15 +16,14 @@ Pytorch implementation of [Gaussian YOLOv3](https://arxiv.org/abs/1904.04620)
 
 The benchmark results below have been obtained by training models for 500k iterations on the COCO 2017 train dataset using darknet repo and our repo.
 
-Accordingo to the benchmark, 
 **Gaussian YOLOv3 implemented in our repo achieved 30.4% in COCO AP[IoU=0.50:0.95]**, which is
 2.6 ~ 2.7 point higher than the score of YOLOv3 implemented in darknet and our repo.
 
 This gain is smaller than 3.1, the one reported in the Gaussian YOLOv3 paper.
 This may come from:
-- absence of `sigma_const`: Gaussian YOLOv3 official repo uses a hyper parameter `sigma_const` as an offset for uncertainties to predict but we do not use it
-- gradient clipping: we use gradient clipping technique to avoid divergence during training
-- difference of hyper parameters: official repo does not contain hyper parameters for COCO
+- **absence of `sigma_const` parameter**: Gaussian YOLOv3 official repo uses a hyper parameter `sigma_const` as an offset for predicted uncertainties but we do not use it
+- **use of gradient clipping**: we use gradient clipping technique to avoid divergence during training
+- **difference of hyper parameters**: official repo does not contain hyper parameters for training with COCO dataset
 
 |                         | YOLOv3 (darknet repo) | YOLOv3 (our repo) | Gaussian YOLOv3 (our repo) |
 |-------------------------|-----------------------|-------------------|----------------------------|
@@ -56,7 +55,7 @@ optional:
 
 #### Docker Environment
 
-We provide a Dockerfile to build an environment that meets the above requirements.
+we provide a Dockerfile to build an environment that meets the above requirements.
 
 ```bash
 # build docker image
@@ -76,7 +75,17 @@ see [demo.ipynb](./demo.ipynb).
 
 Make sure you specify the path to the pretrained weight correctly in the notebook.
 
+In this notebook, predicted uncertainties of box size are represented by dashed lines around the boxes, 
+and uncertainties of box center coordinates are visualized by crossed lines inside the boxes.
+
 ## Train
+
+#### Donwload COCO 2017 dataset
+COCO dataset is downloaded and unzipped by:   
+
+```bash
+$ bash requirements/getcoco.sh
+```
 
 #### Download pretrained weights
 download Darknet53 pretrained weights from the author's project page:   
@@ -85,13 +94,6 @@ download Darknet53 pretrained weights from the author's project page:
 $ mkdir weights
 $ cd weights/
 $ bash ../requirements/download_weights.sh
-```
-
-#### COCO 2017 dataset:
-the COCO dataset is downloaded and unzipped by:   
-
-```bash
-$ bash requirements/getcoco.sh
 ```
 
 #### Training
