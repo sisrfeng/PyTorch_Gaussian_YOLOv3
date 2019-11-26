@@ -116,10 +116,23 @@ class YOLOLayer(nn.Module):
 
         if labels is None:  # not training
             pred[..., :4] *= self.stride
+            pred = pred.view(batchsize, -1, n_ch)  # shsape: [batch, anchor x grid_x x grid_x, n_class + 5]
+
             if self.gaussian:
-                sigma = sigma_xywh.mean(dim=-1)  # shape: [batch, anchor, grid_y, grid_x]
+                # scale objectness confidence with xywh uncertainties
+                sigma_xywh = sigma_xywh.view(batchsize, -1, 4)  # shsape: [batch, anchor x grid_x x grid_x, 4]
+                sigma = sigma_xywh.mean(dim=-1)
                 pred[..., 4] *= (1.0 - sigma)
-            return pred.view(batchsize, -1, n_ch).data
+
+                # unnormalize uncertainties
+                sigma_xywh = torch.sqrt(sigma_xywh)
+                sigma_xywh[..., :2] *= self.stride
+                sigma_xywh[..., 2:] = torch.exp(sigma_xywh[..., 2:])
+
+                # concat pred with uncertainties
+                pred = torch.cat([pred, sigma_xywh], 2)  # shsape: [batch, anchor x grid_x x grid_x, n_class + 9]
+
+            return pred.data
 
         pred = pred[..., :4].data  # shape: [batch, anchor, grid_y, grid_x, 4(= x, y, w, h)]
 

@@ -158,7 +158,7 @@ def main():
     for iter_i in range(iter_state, iter_size + 1):
 
         # COCO evaluation
-        if iter_i % args.eval_interval == 0 and iter_i > 0:
+        if iter_i % args.eval_interval == 0:
             print('evaluating...')
             ap = evaluator.evaluate(model)
             model.train()
