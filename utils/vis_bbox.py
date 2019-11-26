@@ -1,8 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def vis_bbox(img, bbox, label=None, score=None, label_names=None,
-             instance_colors=None, sigma=[], alpha=1., linewidth=1., ax=None):
+def vis_bbox(img, bbox, label=None, score=None, label_names=None, instance_colors=None, 
+    sigma=[], sigma_scale_xy=10.0, sigma_scale_wh=3.0,
+    alpha=1., linewidth=1., ax=None):
     """Visualize bounding boxes inside the image.
     Args:
         img (~numpy.ndarray): An array of shape :math:`(3, height, width)`.
@@ -28,6 +29,10 @@ def vis_bbox(img, bbox, label=None, score=None, label_names=None,
             all boxes.
         sigma (iterable of tuples): List of uncertainties with shape :math:`(R, 4)`.
              Each value indicates uncertainties of the xywh coordinates.
+        sigma_scale_xy (float): scaling factor to visualize xy uncertainties.
+             This emphasizes the xy uncertainties to be visualized.
+        sigma_scale_wh (float): scaling factor to visualize wh uncertainties.
+             This emphasizes the wh uncertainties to be visualized.
         alpha (float): The value which determines transparency of the
             bounding boxes. The range of this value is :math:`[0, 1]`.
         linewidth (float): The thickness of the edges of the bounding boxes.
@@ -77,19 +82,17 @@ def vis_bbox(img, bbox, label=None, score=None, label_names=None,
             sx, sy, sw, sh = sigma[i]
             
             # wh uncertainties
-            scale_wh = 3.0
             dw = width * sw - width
             dh = height * sh - height
-            dw *= scale_wh
-            dh *= scale_wh
+            dw *= sigma_scale_wh
+            dh *= sigma_scale_wh
             ax.add_patch(plt.Rectangle(
                 (x - 0.5 * dw, y - 0.5 * dh), width + dw, height + dh, fill=False,
                 edgecolor=color, linewidth=linewidth, alpha=alpha, linestyle='--'))
             
             # xy uncertainties
-            scale_xy = 10.0
-            sx *= scale_xy
-            sy *= scale_xy
+            sx *= sigma_scale_xy
+            sy *= sigma_scale_xy
             cx, cy = x + width * 0.5, y + height * 0.5
             ax.annotate('',  xy=(cx - sx, cy), xytext=(cx + sx, cy),
                 arrowprops=dict(arrowstyle='|-|, widthA=0.25, widthB=0.25',
