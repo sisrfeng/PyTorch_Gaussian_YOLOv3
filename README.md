@@ -28,7 +28,7 @@ This may come from:
 |                         | YOLOv3 (darknet repo) | YOLOv3 (our repo) | Gaussian YOLOv3 (our repo) |
 |-------------------------|-----------------------|-------------------|----------------------------|
 | COCO AP [IoU=0.50:0.95] | 0.278                 | 0.277             | **0.304**                  |
-| COCO AP [IoU=0.50]      | 0.476                 | 0.478             | **0.467**                  |
+| COCO AP [IoU=0.50]      | 0.476                 | **0.478**         | 0.467                      |
 
 ![](data/gaussian_yolov3/val2017_comparison.png)
 
