@@ -30,7 +30,7 @@ This may come from:
 | COCO AP [IoU=0.50:0.95] | 0.278                 | 0.277             | **0.304**                  |
 | COCO AP [IoU=0.50]      | 0.476                 | 0.478             | **0.467**                  |
 
-<p align="left"><img src="data/gaussian_yolov3/val2017_comparison.png" height="500"\>
+![](data/gaussian_yolov3/val2017_comparison.png)
 
 Training configurations used in our repo can be found under [config dir](./config).
 
@@ -78,9 +78,7 @@ Make sure you specify the path to the pretrained weight correctly in the noteboo
 In this notebook, predicted uncertainties of box size are represented by dashed lines around the boxes, 
 and uncertainties of box center coordinates are visualized by crossed lines inside the boxes:
 
-<p align="left">
-  <img src="data/gaussian_yolov3/traffic_1_result.png" height="480"\>
-</p>
+![](data/gaussian_yolov3/traffic_1_result.png)
 
 ## Training
 
