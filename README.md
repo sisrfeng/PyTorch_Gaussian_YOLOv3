@@ -1,5 +1,5 @@
 # Gaussian YOLOv3 in PyTorch
-Pytorch implementation of [Gaussian YOLOv3](https://arxiv.org/abs/1904.04620)
+PyTorch implementation of [Gaussian YOLOv3](https://arxiv.org/abs/1904.04620)
 
 <p align="left">
   <img src="data/gaussian_yolov3/traffic_1_result.png" height="260"\>
