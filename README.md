@@ -175,7 +175,7 @@ NUM_GPUS: 1
 ## Evaluate COCO AP
 
 ```bash
-$ python train.py --cfg config/gaussian_yolov3_eval.cfg --eval_interval 1 [--ckpt ckpt_path] [--weights_path weights_path]
+$ python train.py --cfg config/gaussian_yolov3_eval.cfg --eval_interval 1 [--checkpoint ckpt_path] [--weights_path weights_path]
 ```
 
 ## Paper
