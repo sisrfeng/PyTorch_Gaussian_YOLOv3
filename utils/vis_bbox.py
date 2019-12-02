@@ -120,4 +120,4 @@ def vis_bbox(img, bbox, label=None, score=None, label_names=None, instance_color
                     color='black',
                     style='italic',
                     bbox={'facecolor': color, 'edgecolor': color, 'alpha': 1, 'pad': 0})
-    return ax
+    return fig, ax
