@@ -2,8 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 def vis_bbox(img, bbox, label=None, score=None, label_names=None, instance_colors=None, 
-    sigma=[], sigma_scale_xy=10.0, sigma_scale_wh=3.0,
-    alpha=1., linewidth=1., ax=None):
+    sigma=[], sigma_scale_img=(1.0, 1.0), sigma_scale_xy=3.0, sigma_scale_wh=3.0,
+    show_inner_bound=False, alpha=1., linewidth=1., ax=None):
     """Visualize bounding boxes inside the image.
     Args:
         img (~numpy.ndarray): An array of shape :math:`(3, height, width)`.
@@ -29,10 +29,13 @@ def vis_bbox(img, bbox, label=None, score=None, label_names=None, instance_color
             all boxes.
         sigma (iterable of tuples): List of uncertainties with shape :math:`(R, 4)`.
              Each value indicates uncertainties of the xywh coordinates.
+        sigma_scale_img (list of float): scaling factor to visualize xy uncertainties.
+             This compensates image scaling each for x and y axis of sigmas.
         sigma_scale_xy (float): scaling factor to visualize xy uncertainties.
-             This emphasizes the xy uncertainties to be visualized.
+             This emphasizes the xy uncertainties to be visualized (default: 3-sigma).
         sigma_scale_wh (float): scaling factor to visualize wh uncertainties.
-             This emphasizes the wh uncertainties to be visualized.
+             This emphasizes the wh uncertainties to be visualized (default: 3-sigma).
+        show_inner_bound (bool): True when inner bound of wh uncertainty should be drawn.
         alpha (float): The value which determines transparency of the
             bounding boxes. The range of this value is :math:`[0, 1]`.
         linewidth (float): The thickness of the edges of the bounding boxes.
@@ -79,28 +82,47 @@ def vis_bbox(img, bbox, label=None, score=None, label_names=None, instance_color
             edgecolor=color, linewidth=linewidth, alpha=alpha))
         
         if sigma:
+            img_scale_xaxis, img_scale_yaxis = sigma_scale_img
             sx, sy, sw, sh = sigma[i]
             
             # wh uncertainties
-            dw = width * sw - width
-            dh = height * sh - height
-            dw *= sigma_scale_wh
-            dh *= sigma_scale_wh
+            dw = width * np.power(sw, sigma_scale_wh) - width
+            dh = height * np.power(sh, sigma_scale_wh) - height
+            dw *= img_scale_xaxis
+            dh *= img_scale_yaxis
             ax.add_patch(plt.Rectangle(
                 (x - 0.5 * dw, y - 0.5 * dh), width + dw, height + dh, fill=False,
-                edgecolor=color, linewidth=linewidth, alpha=alpha, linestyle='--'))
+                edgecolor=color, linewidth=linewidth * 0.6, alpha=alpha, linestyle='--'))
+
+            if show_inner_bound:
+                dw = width / np.power(sw, sigma_scale_wh) - width
+                dh = height / np.power(sh, sigma_scale_wh) - height
+                dw *= img_scale_xaxis
+                dh *= img_scale_yaxis
+                ax.add_patch(plt.Rectangle(
+                    (x - 0.5 * dw, y - 0.5 * dh), width + dw, height + dh, fill=False,
+                    edgecolor=color, linewidth=linewidth * 0.6, alpha=alpha, linestyle='--'))
             
             # xy uncertainties
-            sx *= sigma_scale_xy
-            sy *= sigma_scale_xy
+            sx *= img_scale_xaxis * sigma_scale_xy
+            sy *= img_scale_yaxis * sigma_scale_xy
             cx, cy = x + width * 0.5, y + height * 0.5
-            ax.annotate('',  xy=(cx - sx, cy), xytext=(cx + sx, cy),
-                arrowprops=dict(arrowstyle='|-|, widthA=0.25, widthB=0.25',
-                facecolor=color, edgecolor=color, alpha=alpha))
-            
-            ax.annotate('',  xy=(cx, cy - sy), xytext=(cx, cy + sy),
-                arrowprops=dict(arrowstyle='|-|, widthA=0.25, widthB=0.25',
-                facecolor=color, edgecolor=color, alpha=alpha))
+
+            ax.add_line(plt.Line2D(
+                (cx - sx, cx + sx), (cy, cy),
+                color=color, linewidth=linewidth * 1.4, alpha=alpha))
+
+            ax.add_line(plt.Line2D(
+                (cx, cx), (cy - sy, cy + sy),
+                color=color, linewidth=linewidth * 1.4, alpha=alpha))
+
+            #ax.annotate('',  xy=(cx - sx, cy), xytext=(cx + sx, cy),
+            #    arrowprops=dict(arrowstyle='|-|, widthA=0.25, widthB=0.25',
+            #    facecolor=color, edgecolor=color, alpha=alpha))
+
+            #ax.annotate('',  xy=(cx, cy - sy), xytext=(cx, cy + sy),
+            #    arrowprops=dict(arrowstyle='|-|, widthA=0.25, widthB=0.25',
+            #    facecolor=color, edgecolor=color, alpha=alpha))
 
         caption = []
 
