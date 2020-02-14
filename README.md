@@ -1,6 +1,10 @@
 # Gaussian YOLOv3 in PyTorch
 PyTorch implementation of [Gaussian YOLOv3](https://arxiv.org/abs/1904.04620)
 
+if your are in China add these two lines in the dockerfile:
+RUN pip3 config set global.index-url http://mirrors.aliyun.com/pypi/simple
+RUN pip3 config set install.trusted-host mirrors.aliyun.com
+
 <p align="left">
   <img src="data/gaussian_yolov3/traffic_1_result.png" height="260"\>
   <img src="data/gaussian_yolov3/traffic_5_result.png" height="260"\>
