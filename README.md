@@ -7,6 +7,8 @@ RUN pip3 config set global.index-url http://mirrors.aliyun.com/pypi/simple
 
 RUN pip3 config set install.trusted-host mirrors.aliyun.com
 
+修改了ubuntu的~/.pip/pip.conf，换了pip的源，到了docker里面好像不起作用，还是国外源
+
 <p align="left">
   <img src="data/gaussian_yolov3/traffic_1_result.png" height="260"\>
   <img src="data/gaussian_yolov3/traffic_5_result.png" height="260"\>
