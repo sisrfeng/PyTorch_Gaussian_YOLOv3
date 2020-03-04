@@ -164,7 +164,9 @@ TRAIN:
   BURN_IN: 1000
   MAXITER: 500000
   STEPS: (400000, 450000)
-  BATCHSIZE: 4
+  BATCHSIZE: 4    #'Batchsize affects the final AP, which is the case for both our repo and the original darknet repo.'https://github.com/DeNA/PyTorch_YOLOv3/issues/44
+
+
   SUBDIVISION: 16
   IMGSIZE: 608
   LOSSTYPE: l2
