@@ -1,3 +1,8 @@
+这些阈值怎么确定?
+# Detection threshold
+detect_thresh = 0.3
+
+
 # Gaussian YOLOv3 in PyTorch
 PyTorch implementation of [Gaussian YOLOv3](https://arxiv.org/abs/1904.04620)
 
