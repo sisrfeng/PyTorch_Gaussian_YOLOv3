@@ -1,3 +1,10 @@
+IMAGESIZE=640
+When I train on my own dataset, whose picture size is 1920*1080, is IMAGESIZE=1920?
+
+
+
+
+
 train the model using gaussian_yolov3_coco.pth as checkpoint:
 
 Using my own dataset
