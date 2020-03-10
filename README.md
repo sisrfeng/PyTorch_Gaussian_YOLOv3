@@ -1,16 +1,21 @@
+q1:
 IMAGESIZE=608
 When I train on my own dataset, whose picture size is 1920*1080, is IMAGESIZE=1920?
 
-In the paper:
+In the gaussian paper:
 the proposed algorithm consequently maintains the real-time detection speed
 of over 42 fps with an input resolution of 512 × 512 despite
 the significant improvements in performance
 
 
-after resize, the picture is 416 by 416 (pad)
+a1:
+In yolov3 paper, there are yolov3 416by416 and yolov3 608by608
+after resize, the picture is 
+train:608 by 608 (pad)
+test: 416 by 416 (pad)
 
 
-
+q2:
 train the model using gaussian_yolov3_coco.pth as checkpoint:
 
 Using my own dataset
