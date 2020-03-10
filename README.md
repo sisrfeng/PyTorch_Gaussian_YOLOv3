@@ -1,4 +1,4 @@
-IMAGESIZE=640
+IMAGESIZE=608
 When I train on my own dataset, whose picture size is 1920*1080, is IMAGESIZE=1920?
 
 In the paper:
