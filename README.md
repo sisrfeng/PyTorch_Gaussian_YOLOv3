@@ -1,7 +1,13 @@
 IMAGESIZE=640
 When I train on my own dataset, whose picture size is 1920*1080, is IMAGESIZE=1920?
 
+In the paper:
+the proposed algorithm consequently maintains the real-time detection speed
+of over 42 fps with an input resolution of 512 × 512 despite
+the significant improvements in performance
 
+
+after resize, the picture is 416 by 416 (pad)
 
 
 
