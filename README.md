@@ -1,3 +1,9 @@
+At the beginning of training, the output is random. Noisy boxes are detected everywhere in the image. The postprocess tries to perform non-max suppression (NMS) on ALL the boxes. That's why evaluation takes time.
+So the only solution is not to evaluate the model at the early stage of training.
+(the evaluation speed is relevant to how well the model is trained.)
+https://github.com/DeNA/PyTorch_YOLOv3/issues/56
+
+
 q1:
 IMAGESIZE=608
 When I train on my own dataset, whose picture size is 1920*1080, is IMAGESIZE=1920?
